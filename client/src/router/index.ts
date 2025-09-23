@@ -1,28 +1,47 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import DashboardView from '@/views/DashboardView.vue'
-import MonitoringView from '@/views/MonitoringView.vue'
 
 export const routes = [
   {
     path: '/',
     name: 'dashboard',
-    title: 'Инциденты',
-    component: DashboardView,
-    icon: 'pi pi-list',
+    component: () => import('@/views/DashboardView.vue'),
   },
   {
     path: '/monitoring',
     name: 'monitoring',
-    title: 'Мониторинг',
-    component: MonitoringView,
-    icon: 'pi pi-chart-bar',
+    component: () => import('@/views/MonitoringView.vue'),
+  },
+  {
+    path: '/login',
+    name: 'login',
+    component: () => import('@/views/LoginView.vue'),
+  },
+  {
+    path: '/:catchAll(.*)',
+    redirect: '/',
   },
 ]
 
 const router = createRouter({
-  // history: createWebHistory(import.meta.env.BASE_URL),
   history: createWebHistory(),
   routes,
+})
+
+router.beforeEach(async (to, from, next) => {
+  const token = localStorage.getItem('sessionToken')
+
+  if (!token && to.name === 'login') {
+    return next()
+  }
+  if (token && (to.name === 'login' || to.name === 'register')) {
+    return next('./')
+  }
+
+  if (token) {
+    next()
+  } else {
+    next('./login')
+  }
 })
 
 export default router

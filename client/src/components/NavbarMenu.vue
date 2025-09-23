@@ -4,12 +4,7 @@
       <div class="flex items-center space-x-3">
         <div class="flex items-center justify-center">
           <Button icon="pi pi-home" rounded severity="info" @click="visible = true" />
-          <Toast />
-          <Dialog
-            v-model:visible="visible"
-            modal
-            header="Создать инцидент"
-          >
+          <Dialog v-model:visible="visible" modal header="Создать инцидент">
             <span class="text-surface-500 dark:text-surface-400 block mb-8"
               >Все поля обязательны к заполнению</span
             >
@@ -91,14 +86,14 @@
 
     <nav class="flex-1 p-4">
       <ul class="space-y-2">
-        <li v-for="route in routes" :key="route.name">
-          <RouterLink :to="route.path">
+        <li v-for="item in navItems" :key="item.name">
+          <RouterLink tabindex="-1" :to="item.path">
             <Button
               class="w-full justify-start!"
-              :variant="currentRouteName === route.name ? '' : 'text'"
-              :severity="currentRouteName === route.name ? '' : 'secondary'"
-              :label="route.title"
-              :icon="route.icon"
+              :variant="currentRouteName === item.name ? '' : 'text'"
+              :severity="currentRouteName === item.name ? '' : 'secondary'"
+              :label="item.title"
+              :icon="item.icon"
             />
           </RouterLink>
         </li>
@@ -112,11 +107,11 @@
         </div>
         <div class="flex-1">
           <p class="text-sm font-medium text-carbon-gray-10" data-testid="user-name">
-            Иванов. И.И.
+            {{ userName }}
           </p>
           <p class="text-xs text-carbon-gray-40">Диспетчер</p>
         </div>
-        <Button icon="pi pi-sign-out" rounded severity="secondary" variant="text" />
+        <Button icon="pi pi-sign-out" rounded severity="secondary" variant="text" @click="logout" />
       </div>
     </div>
   </div>
@@ -125,24 +120,43 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import Toast from 'primevue/toast'
 import { useToast } from 'primevue/usetoast'
 import { Button } from 'primevue'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import Select from 'primevue/select'
-import { routes } from '@/router'
 import { createTask } from '../api/index.ts'
 import { Statuses, Priority, Types } from '@/types/accidents.ts'
 import type { ITask } from '@/types/accidents.ts'
-
+import { useRouter } from 'vue-router'
+const router = useRouter()
+import { useUserStore } from '@/stores/user'
 const emit = defineEmits(['update'])
 
 const route = useRoute()
+const userStore = useUserStore()
 const currentRouteName = computed(() => route.name)
+const userName = computed(
+  () =>
+    `${userStore.user?.lastName} ${userStore.user?.firstName.charAt(0).toUpperCase()}. ${userStore.user?.middleName ? userStore.user?.middleName.charAt(0).toUpperCase() + '.' : ''}`,
+)
 const toast = useToast()
 const visible = ref(false)
 const payload = ref({} as ITask)
+const navItems = [
+  {
+    path: '/',
+    name: 'dashboard',
+    title: 'Инциденты',
+    icon: 'pi pi-list',
+  },
+  {
+    path: '/monitoring',
+    name: 'monitoring',
+    title: 'Мониторинг',
+    icon: 'pi pi-chart-bar',
+  },
+]
 
 async function saveTask() {
   try {
@@ -154,5 +168,13 @@ async function saveTask() {
   } finally {
     visible.value = false
   }
+}
+
+function logout() {
+  localStorage.removeItem('sessionToken')
+  localStorage.removeItem('sessionEmail')
+  router.push('/login')
+  toast.add({ severity: 'info', summary: 'Вы вышли из системы', life: 3000 })
+  userStore.user = undefined
 }
 </script>

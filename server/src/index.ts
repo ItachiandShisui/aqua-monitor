@@ -1,8 +1,11 @@
 import path from "path";
 import express from "express";
+import cors from "cors";
 import type { Application, Request, Response } from "express";
+import passport from "passport";
 import dotenv from "dotenv";
 import history from "connect-history-api-fallback";
+import authRoutes from "./routes/authRoutes";
 import taskRoutes from "./routes/taskRoutes";
 import { connectDB } from "./config/db";
 
@@ -12,7 +15,10 @@ const app: Application = express();
 connectDB();
 
 app.use(express.json());
-app.use("/api", taskRoutes);
+app.use(passport.initialize());
+
+app.use("/api/auth", authRoutes);
+app.use("/api", passport.authenticate("jwt", { session: false }), taskRoutes);
 
 if (process.env.NODE_ENV === "production") {
   app.use(express.static(path.join(__dirname, "../../client/dist")));
@@ -22,9 +28,7 @@ if (process.env.NODE_ENV === "production") {
       .sendFile(path.join(__dirname, "../../client/dist/index.html"));
   });
 } else {
-  app.get("*", (req, res) => {
-    res.send("API is running....");
-  });
+  app.use(cors());
 }
 
 // Handle routing from front-end

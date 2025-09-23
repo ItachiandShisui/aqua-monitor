@@ -1,5 +1,4 @@
 <template>
-  <Toast />
   <Tabs class="w-full p-6" value="0">
     <TabList>
       <Tab value="0" as="div" class="flex items-center gap-2">
@@ -23,6 +22,7 @@
         :key="idx"
         :value="String(idx)"
         as="div"
+        tabindex="-1"
       >
         <Card v-for="task in tasks" :key="task._id" class="p-6 border mb-2">
           <template #header>
@@ -81,7 +81,6 @@
 
 <script lang="ts" setup>
 import { onMounted, ref } from 'vue'
-import Toast from 'primevue/toast'
 import { useToast } from 'primevue/usetoast'
 import Badge from 'primevue/badge'
 import Button from 'primevue/button'
@@ -106,7 +105,8 @@ const currentTasks = ref([] as ITask[])
 const resolvedTasks = ref([] as ITask[])
 
 onMounted(async () => {
-  await recieveTasks()
+  const token = localStorage.getItem('sessionToken')
+  if (token) await recieveTasks()
 })
 
 function tagColor(priority: Priority) {
