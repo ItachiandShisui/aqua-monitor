@@ -1,6 +1,6 @@
 <template>
   <h2 class="text-center content-center font-bold pb-2">
-    Прогнозирование ведомостей с возможностью внесение изменений
+    Прогнозирование ведомостей с возможностью внесения изменений
   </h2>
   <Tabs class="w-full" value="0">
     <TabList>
@@ -13,7 +13,7 @@
     </TabList>
     <TabPanels>
       <TabPanel value="0" tabindex="-1">
-        <HVSITPTable />
+        <HVSITPForecastTable />
       </TabPanel>
       <TabPanel value="1" tabindex="-1">
         <GVSForecastTable />
@@ -28,6 +28,6 @@ import TabList from 'primevue/tablist'
 import Tab from 'primevue/tab'
 import TabPanels from 'primevue/tabpanels'
 import TabPanel from 'primevue/tabpanel'
-import HVSITPTable from '@/components/HVSITPTable.vue'
 import GVSForecastTable from '@/components/GVSForecastTable.vue'
+import HVSITPForecastTable from '@/components/HVSITPForecastTable.vue'
 </script>

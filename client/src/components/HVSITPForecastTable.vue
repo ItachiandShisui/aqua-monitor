@@ -34,9 +34,13 @@
             :model="saveOptions"
           />
         </div>
-        <div v-if="toEditList.size > 0">
-          <Button class="mr-2" label="Сохранить изменения" @click="showModal = true" />
-          <Button label="Отменить" severity="danger" @click="resetSheet" />
+        <div class="flex gap-2">
+          <template v-if="toEditList.size > 0">
+            <Button label="Сохранить изменения" @click="showConfirmModal = true" />
+            <Button label="Отменить" severity="danger" @click="resetSheet" />
+            <Divider layout="vertical" />
+          </template>
+          <Button label="Спрогнозировать" @click="showForecastModal = true" />
         </div>
       </div>
     </template>
@@ -55,7 +59,7 @@
   </DataTable>
 
   <Dialog
-    v-model:visible="showModal"
+    v-model:visible="showConfirmModal"
     modal
     header="Вы уверены, что хотите внести изменения?"
     :closable="false"
@@ -68,9 +72,33 @@
         type="button"
         label="Отмена"
         severity="secondary"
-        @click="showModal = false"
+        @click="showConfirmModal = false"
       ></Button>
     </div>
+  </Dialog>
+  <Dialog
+    v-model:visible="showForecastModal"
+    modal
+    header="Создать новый прогноз"
+    :closable="false"
+    dismissableMask
+  >
+    <div class="flex justify-between gap-2">
+      <div class="flex gap-2">
+        <p class="text-center content-center">Продолжительность в днях</p>
+        <Select v-model="forecastDuration" :options="[1, 7, 14, 21]" />
+      </div>
+    </div>
+    <template #footer>
+      <Button class="basis-100" type="button" label="Подтвердить" @click="createForecast"></Button>
+      <Button
+        class="basis-100"
+        type="button"
+        label="Отмена"
+        severity="secondary"
+        @click="showForecastModal = false"
+      ></Button>
+    </template>
   </Dialog>
 </template>
 
@@ -80,10 +108,17 @@ import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import InputNumber from 'primevue/inputnumber'
 import Button from 'primevue/button'
+import Divider from 'primevue/divider'
 import SplitButton from 'primevue/splitbutton'
 import Dialog from 'primevue/dialog'
+import Select from 'primevue/select'
 import { useToast } from 'primevue/usetoast'
-import { getHVSITPPDF, getHVSITPSheet, updateHVSITPSheet } from '@/api'
+import {
+  getHVSITPForecastSheet,
+  updateHVSITPForecastSheet,
+  getHVSITPForecastPDF,
+  createHVSITPForecastSheet,
+} from '@/api'
 import { replaceDate } from '@/utils'
 import type { PageState } from 'primevue'
 import type { IHVSITP } from '@/types/sheets'
@@ -94,10 +129,6 @@ interface ICellEditEvent {
   newValue: string | number
   index: number
 }
-
-const emit = defineEmits<{
-  (e: 'update', dataset: IHVSITP[]): void
-}>()
 
 const PER_PAGE = 25
 let page = 0
@@ -114,8 +145,10 @@ let originalSheets = [] as IHVSITP[]
 const sheets = ref<IHVSITP[]>([])
 const totalSheets = ref(0)
 const isLoading = ref(false)
-const showModal = ref(false)
 const toEditList = ref(new Set<IHVSITP>())
+const showForecastModal = ref(false)
+const showConfirmModal = ref(false)
+const forecastDuration = ref(7)
 const saveOptions = [
   {
     label: 'Скачать CSV',
@@ -154,7 +187,7 @@ async function fetchData(e?: PageState) {
 
   params = `?pageNumber=${page + 1}&perPage=${rows}`
 
-  await getHVSITPSheet(params).then((data) => {
+  await getHVSITPForecastSheet(params).then((data) => {
     if (data) {
       sheets.value = data.data
       originalSheets = structuredClone(data.data)
@@ -162,13 +195,12 @@ async function fetchData(e?: PageState) {
     }
   })
   isLoading.value = false
-  emit('update', sheets.value)
 }
 
 async function updateSheet() {
   try {
-    showModal.value = false
-    await updateHVSITPSheet(toEditList.value).then((response) => {
+    showConfirmModal.value = false
+    await updateHVSITPForecastSheet(toEditList.value).then((response) => {
       if (response?.status !== 200) {
         throw new Error()
       }
@@ -189,7 +221,7 @@ async function updateSheet() {
 
 async function exportPDF() {
   isLoading.value = true
-  await getHVSITPPDF(`?pageNumber=${page + 1}&perPage=${rows}`).then((response) => {
+  await getHVSITPForecastPDF(`?pageNumber=${page + 1}&perPage=${rows}`).then((response) => {
     const blob = new Blob([response!.data], { type: 'application/pdf' })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
@@ -205,5 +237,18 @@ async function exportPDF() {
 function resetSheet() {
   sheets.value = structuredClone(originalSheets)
   toEditList.value.clear()
+}
+
+async function createForecast() {
+  showForecastModal.value = false
+  isLoading.value = true
+  await createHVSITPForecastSheet(forecastDuration.value * 24).then((data) => {
+    if (data) {
+      sheets.value = data.data
+      originalSheets = structuredClone(data.data)
+      totalSheets.value = data.totalSheets
+    }
+  })
+  isLoading.value = false
 }
 </script>

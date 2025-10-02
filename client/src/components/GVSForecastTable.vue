@@ -140,8 +140,6 @@ const columns = ref([
   { field: 'to', header: 'Подача, м3' },
   { field: 'out', header: 'Обратка, м3' },
   { field: 'total', header: 'Потребление за период, м3' },
-  { field: 't1', header: 'Т1 гвс, оС' },
-  { field: 't2', header: 'Т2 гвс, оС' },
 ])
 const toast = useToast()
 let originalSheets = [] as IGVSAnalize[]

@@ -8,7 +8,7 @@ import GVS from "../models/GVS";
 import GVSAnalyze from "../models/GVSAnalyze";
 import HVSITPForecast from "../models/HTSITPForecast";
 import { eraseFile } from "../utils";
-import { IGVSAnalize } from "../types/sheets";
+import { IGVSAnalize, IHVSITPForecast } from "../types/sheets";
 
 async function saveGVSAnalyze(req: Request, res: Response, payload: string) {
   try {
@@ -64,6 +64,37 @@ export async function createGVSAnalyze(req: Request, res: Response) {
   }
 }
 
+export async function createHVSITPForecastSheet(req: Request, res: Response) {
+  try {
+    const GVSCollection = JSON.stringify(await GVS.find());
+    const HVSITPCollection = JSON.stringify(await HVSITP.find());
+    const forecastDuration = req.body.duration.toString() || "168";
+    let pythonOutput = "";
+
+    const pythonProcess = spawn("python", ["./src/scripts/hvs_forecast.py"]);
+
+    pythonProcess.stdin.write(GVSCollection + "\n");
+    pythonProcess.stdin.write(HVSITPCollection + "\n");
+    pythonProcess.stdin.write(forecastDuration);
+    pythonProcess.stdin.end();
+
+    pythonProcess.stdout.on("data", (data: { toString: () => string }) => {
+      pythonOutput += data.toString();
+    });
+
+    pythonProcess.on("close", (code: number) => {
+      if (code === 0) {
+        saveHVSITPForecast(req, res, pythonOutput);
+      } else {
+        res.status(500).send("Python script execution failed.");
+      }
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server Error" });
+  }
+}
+
 export async function getGVSAnalyze(req: Request, res: Response) {
   try {
     let totalCount = await GVSAnalyze.countDocuments();
@@ -80,6 +111,20 @@ export async function getGVSAnalyze(req: Request, res: Response) {
     totalCount = await GVSAnalyze.find({ t1: null }).countDocuments();
 
     return res.status(200).json({ totalSheets: totalCount, data: sheet });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server Error" });
+  }
+}
+
+export async function updateHVSITPForecastSheet(req: Request, res: Response) {
+  try {
+    req.body.forEach(async ({ _id, delta }: IHVSITPForecast) => {
+      await HVSITPForecast.updateOne({ _id: _id }, { $set: { delta: delta } });
+    });
+    eraseFile(path.join(__dirname, "..", "temp", "GVSForecastOutput.pdf"));
+
+    return res.status(200).json({ message: "Данные сохранены" });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server Error" });
@@ -106,6 +151,7 @@ async function saveHVSITPForecast(
   payload: string
 ) {
   try {
+    await HVSITPForecast.deleteMany({});
     await HVSITPForecast.create(JSON.parse(payload), {
       validator: {
         $jsonSchema: {
@@ -158,19 +204,91 @@ export async function createHVSITPForecast(req: Request, res: Response) {
 
 export async function getHVSITPForecast(req: Request, res: Response) {
   try {
-    const totalCount = await HVSITPForecast.countDocuments();
+    let totalCount = await HVSITPForecast.countDocuments();
 
     if (!totalCount) {
       await createHVSITPForecast(req, res);
       return;
     }
-    const sheet = await HVSITPForecast.find();
+    const pageNumber = Number(req.query.pageNumber) || 1;
+    const perPage = Number(req.query.perPage) || 25;
+    const sheet = await HVSITPForecast.find({ forecast: 1 })
+      .sort({ datetime: 1 })
+      .skip((pageNumber - 1) * perPage)
+      .limit(perPage);
+    totalCount = await HVSITPForecast.find({ forecast: 1 }).countDocuments();
 
-    res.status(200).send(sheet);
+    return res.status(200).json({ totalSheets: totalCount, data: sheet });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server Error" });
   }
+}
+
+export async function exportHVSITPForecastCollection(
+  req: Request,
+  res: Response
+) {
+  const filePath = path.join(
+    __dirname,
+    "..",
+    "temp",
+    "HVSITPForecastOutput.pdf"
+  );
+
+  const myDoc = new PDFDocument({ bufferPages: true });
+  myDoc.registerFont("Tinos", "./src/fonts/Tinos.ttf");
+
+  let buffers = [] as Uint8Array<ArrayBufferLike>[];
+  myDoc.on("data", buffers.push.bind(buffers));
+  myDoc.on("end", () => {
+    let pdfData = Buffer.concat(buffers);
+
+    res
+      .writeHead(200, {
+        "Content-Length": Buffer.byteLength(pdfData),
+        "Content-Type": "application/pdf",
+        "Content-disposition": "attachment;filename=HVSITPForecastOutput.pdf",
+      })
+      .end(pdfData);
+  });
+  const pageNumber = Number(req.query.pageNumber) || 1;
+  const perPage = Number(req.query.perPage) || 25;
+  const sheet = await HVSITPForecast.find({ maintenance: 1 })
+    .sort({ datetime: 1 })
+    .skip((pageNumber - 1) * perPage)
+    .limit(perPage);
+
+  myDoc.pipe(fs.createWriteStream(filePath));
+  myDoc
+    .font("Tinos")
+    .fontSize(24)
+    .text("Прогнозируемая посуточная ведомость водосчетчика ХВС ИТП", {
+      align: "center",
+    });
+  myDoc.moveDown();
+
+  const tableStructure = {
+    date: "Дата",
+    time: "Время суток, ч",
+    total: "Потребление накопленным итогом, м3",
+    delta: "Потребление за период, м3",
+  };
+  const tableData = sheet.map((item) => {
+    return Object.keys(tableStructure).map((field) =>
+      field === "date"
+        ? new Date(item[field as keyof typeof item]).toLocaleDateString("ru-RU")
+        : item[field as keyof typeof item]
+    );
+  });
+
+  myDoc
+    .font("Tinos")
+    .fontSize(12)
+    .table({ data: [Object.values(tableStructure), ...tableData] });
+  myDoc.moveDown();
+
+  myDoc.end();
 }
 
 export async function exportGVSForecastCollection(req: Request, res: Response) {
@@ -188,7 +306,7 @@ export async function exportGVSForecastCollection(req: Request, res: Response) {
       .writeHead(200, {
         "Content-Length": Buffer.byteLength(pdfData),
         "Content-Type": "application/pdf",
-        "Content-disposition": "attachment;filename=GVSoutput.pdf",
+        "Content-disposition": "attachment;filename=GVSForecastOutput.pdf",
       })
       .end(pdfData);
   });

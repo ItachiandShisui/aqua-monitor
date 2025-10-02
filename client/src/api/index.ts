@@ -48,6 +48,15 @@ export async function getHVSITPSheet(params = '') {
   }
 }
 
+export async function getHVSITPForecastSheet(params = '') {
+  try {
+    const response = await api.get(`/getHVSITPForecast/${params}`)
+    return response.data as { data: IHVSITP[]; totalSheets: number }
+  } catch (error) {
+    console.error(error)
+  }
+}
+
 export async function updateHVSITPSheet(payload: Set<IHVSITP>) {
   try {
     return await api.patch('updateHVSITPSheet', Array.from(payload))
@@ -82,6 +91,15 @@ export async function createGVSForecastSheet(payload: number) {
   }
 }
 
+export async function createHVSITPForecastSheet(payload: number) {
+  try {
+    const response = await api.post('/createHVSITPForecastSheet', { duration: payload })
+    return response.data as { data: IHVSITP[]; totalSheets: number }
+  } catch (error) {
+    console.error(error)
+  }
+}
+
 export async function getGVSForecastSheet(params = '') {
   try {
     const response = await api.get(`/getGVSAnalyze/${params}`)
@@ -94,6 +112,14 @@ export async function getGVSForecastSheet(params = '') {
 export async function updateGVSForecastSheet(payload: Set<IGVS>) {
   try {
     return await api.patch('/updateGVSForecastSheet', Array.from(payload))
+  } catch (error) {
+    console.error(error)
+  }
+}
+
+export async function updateHVSITPForecastSheet(payload: Set<IHVSITP>) {
+  try {
+    return await api.patch('/updateHVSITPForecastSheet', Array.from(payload))
   } catch (error) {
     console.error(error)
   }
@@ -122,6 +148,15 @@ export async function getGVSForecastPDF(params = '') {
 export async function getHVSITPPDF(params = '') {
   try {
     return await api.get(`/exportHVSITPCollection/${params}`, {
+      responseType: 'blob',
+    })
+  } catch (error) {
+    console.error(error)
+  }
+}
+export async function getHVSITPForecastPDF(params = '') {
+  try {
+    return await api.get(`/exportHVSITPForecastCollection/${params}`, {
       responseType: 'blob',
     })
   } catch (error) {

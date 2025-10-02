@@ -44,5 +44,6 @@ export interface IHVSITPForecast {
   delta: number;
   datetime: Date;
   maintenance: number;
+  forecast: number;
   delta_pred: number;
 }

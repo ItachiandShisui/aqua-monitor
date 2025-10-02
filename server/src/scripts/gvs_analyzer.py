@@ -104,6 +104,10 @@ df_merged["deviation_warning"] = np.select(
     [0, 1, 2],
     default=np.nan  # если вдруг будут NaN или не попало никуда
 )
+df_merged["total"] = (df_merged["total"]).round(2)
+df_merged["to"] = (df_merged["to"]).round(2)
+df_merged["out"] = (df_merged["out"]).round(2)
+
 
 # Если 1, то: 
 # Предупреждение (отклонение 5%)

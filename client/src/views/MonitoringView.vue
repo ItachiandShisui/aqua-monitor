@@ -1,11 +1,27 @@
 <template>
+  <div class="flex">
+    <Chart
+      ref="tempChart"
+      type="line"
+      :data="setTempChart()"
+      :options="tempChartOptions"
+      class="w-full h-36 mb-4 basis-50 flex-50"
+    />
+    <Chart
+      ref="amountChart"
+      type="line"
+      :data="setAmountChart()"
+      :options="amountChartOptions"
+      class="w-full h-36 mb-4 basis-50 flex-50"
+    />
+  </div>
   <div class="flex gap-2 w-full sticky back z-100 top-[-16px] bg-[var(--carbon-gray-100)]">
     <Chart
       ref="primeChart"
       type="line"
-      :data="setChartData()"
+      :data="setTotalChart()"
       :options="chartOptions"
-      class="w-full h-32 mb-4"
+      class="w-full h-36 mb-4"
     />
   </div>
   <Tabs class="w-full" value="0" @update:value="onTabUpdate">
@@ -42,7 +58,20 @@ import { replaceDate } from '@/utils'
 import type { IHVSITP, IGVS } from '@/types/sheets'
 
 const primeChart = ref()
+const amountChart = ref()
+const tempChart = ref()
 const chartOptions = ref()
+const amountChartOptions = ref()
+const tempChartOptions = ref()
+const tempChartData = ref({
+  labels: [] as string[],
+  dataset1: [] as number[],
+  dataset2: [] as number[],
+})
+const amountChartData = ref({
+  labels: [] as string[],
+  dataset: [] as number[],
+})
 const chartData = ref([
   {
     labels: [] as string[],
@@ -56,10 +85,53 @@ const chartData = ref([
 const activeTabIdx = ref(0)
 
 onMounted(() => {
-  chartOptions.value = setChartOptions()
+  chartOptions.value = setChartOptions(0.5)
+  amountChartOptions.value = JSON.parse(JSON.stringify(setChartOptions(12344, 12450)))
+  tempChartOptions.value = setChartOptions(100)
 })
 
-const setChartData = () => {
+const setTempChart = () => {
+  const documentStyle = getComputedStyle(document.documentElement)
+
+  return {
+    labels: [],
+    datasets: [
+      {
+        label: 'Т1 гвс, оС',
+        data: [],
+        fill: false,
+        borderColor: documentStyle.getPropertyValue('--p-primary-500'),
+        tension: 0.4,
+      },
+      {
+        label: 'Т2 гвс, оС',
+        data: [],
+        fill: false,
+        borderColor: documentStyle.getPropertyValue('--p-primary-400'),
+        tension: 0.4,
+      },
+    ],
+  }
+}
+
+const setAmountChart = () => {
+  const documentStyle = getComputedStyle(document.documentElement)
+
+  return {
+    labels: [],
+    datasets: [
+      {
+        label: 'Потребление накопленным итогом, м3',
+        data: [],
+        fill: false,
+        borderColor: documentStyle.getPropertyValue('--p-primary-500'),
+        tension: 0.4,
+      },
+    ],
+  }
+}
+
+const setTotalChart = () => {
   const documentStyle = getComputedStyle(document.documentElement)
 
   return {
@@ -94,16 +166,34 @@ function replaceChartData(payload: IHVSITP[] | IGVS[]) {
       (e) => `${replaceDate(new Date(e.datetime))} ${new Date(e.datetime).toLocaleTimeString()}`,
     )
     chartData.value[0].dataset = (payload as IHVSITP[]).map((e) => e.delta)
+
+    amountChartData.value.labels = chartData.value[0].labels
+    amountChartData.value.dataset = (payload as IHVSITP[]).map((e) => e.total)
+
+    const amountInstance = amountChart.value.chart
+    amountInstance.data.labels = amountChartData.value.labels
+    amountInstance.data.datasets[0].data = amountChartData.value.dataset
+    amountInstance.update()
   } else {
     chartData.value[1].labels = payload.map(
       (e) => `${replaceDate(new Date(e.datetime))} ${new Date(e.datetime).toLocaleTimeString()}`,
     )
     chartData.value[1].dataset = (payload as IGVS[]).map((e) => e.total)
+
+    tempChartData.value.labels = chartData.value[1].labels
+    tempChartData.value.dataset1 = (payload as IGVS[]).map((e) => e.t1)
+    tempChartData.value.dataset2 = (payload as IGVS[]).map((e) => e.t2)
+
+    const tempInstance = tempChart.value.chart
+    tempInstance.data.labels = tempChartData.value.labels
+    tempInstance.data.datasets[0].data = tempChartData.value.dataset1
+    tempInstance.data.datasets[1].data = tempChartData.value.dataset2
+    tempInstance.update()
   }
   addChartData()
 }
 
-const setChartOptions = () => {
+const setChartOptions = (axesize: number, minAxe = 0) => {
   const documentStyle = getComputedStyle(document.documentElement)
   const textColor = documentStyle.getPropertyValue('--p-text-color')
   const textColorSecondary = documentStyle.getPropertyValue('--p-text-muted-color')
@@ -129,8 +219,8 @@ const setChartOptions = () => {
         },
       },
       y: {
-        min: 0,
-        max: 1,
+        min: minAxe,
+        max: axesize,
         ticks: {
           color: textColorSecondary,
         },

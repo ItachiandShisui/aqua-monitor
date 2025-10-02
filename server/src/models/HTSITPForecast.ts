@@ -12,7 +12,6 @@ const HVSITPForecastSchema = new mongoose.Schema<IHVSITPForecast>({
   },
   total: {
     type: Number,
-    required: true,
   },
   datetime: {
     type: Date,
@@ -20,9 +19,11 @@ const HVSITPForecastSchema = new mongoose.Schema<IHVSITPForecast>({
   },
   maintenance: {
     type: Number,
-    required: true,
   },
-  delta_pred: {
+  forecast: {
+    type: Number,
+  },
+  delta: {
     type: Number,
     required: true,
   },
