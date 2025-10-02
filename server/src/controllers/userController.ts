@@ -5,7 +5,7 @@ import User from "../models/User";
 export async function getProfile(
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) {
   try {
     const userExists = await User.findOne({ email: req.query.email });
@@ -42,7 +42,7 @@ export async function login(req: Request, res: Response, next: NextFunction) {
     const accessToken = jwt.sign(
       { id: userExists._id },
       process.env.JWT_SECRET as string,
-      { expiresIn: "1d" }
+      { expiresIn: "1d" },
     );
 
     return res.status(200).json({

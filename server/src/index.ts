@@ -6,7 +6,8 @@ import passport from "passport";
 import dotenv from "dotenv";
 import history from "connect-history-api-fallback";
 import authRoutes from "./routes/authRoutes";
-import taskRoutes from "./routes/taskRoutes";
+import sheetsRoutes from "./routes/sheetsRoutes";
+import forecastRoutes from "./routes/forecastRoutes";
 import { connectDB } from "./config/db";
 
 dotenv.config();
@@ -18,7 +19,10 @@ app.use(express.json());
 app.use(passport.initialize());
 
 app.use("/api/auth", authRoutes);
-app.use("/api", passport.authenticate("jwt", { session: false }), taskRoutes);
+app.use("/api", passport.authenticate("jwt", { session: false }), [
+  sheetsRoutes,
+  forecastRoutes,
+]);
 
 if (process.env.NODE_ENV === "production") {
   app.use(express.static(path.join(__dirname, "../../client/dist")));

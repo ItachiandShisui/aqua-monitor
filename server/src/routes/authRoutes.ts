@@ -7,7 +7,7 @@ const router = express.Router();
 router.get(
   "/profile",
   passport.authenticate("jwt", { session: false }),
-  getProfile
+  getProfile,
 );
 router.post("/login", login);
 router.post("/register", register);

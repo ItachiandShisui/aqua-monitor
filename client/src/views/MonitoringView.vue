@@ -1,66 +1,108 @@
 <template>
-  <div>
-    <h2>Мониторинг в реальном времени</h2>
+  <div class="flex gap-2 w-full sticky back z-100 top-[-16px] bg-[var(--carbon-gray-100)]">
     <Chart
       ref="primeChart"
       type="line"
       :data="setChartData()"
       :options="chartOptions"
-      class="h-[30rem]"
+      class="w-full h-32 mb-4"
     />
   </div>
+  <Tabs class="w-full" value="0" @update:value="onTabUpdate">
+    <TabList>
+      <Tab value="0" as="div" class="flex items-center gap-2">
+        <span class="font-bold whitespace-nowrap">Посуточная ведомость водосчетчика ХВС ИТП</span>
+      </Tab>
+      <Tab value="1" as="div" class="flex items-center gap-2">
+        <span class="font-bold whitespace-nowrap">Посуточная ведомость ОДПУ ГВС</span>
+      </Tab>
+    </TabList>
+    <TabPanels>
+      <TabPanel value="0" tabindex="-1">
+        <HVSITPTable @update="replaceChartData" />
+      </TabPanel>
+      <TabPanel value="1" tabindex="-1">
+        <GVSTable @update="replaceChartData" />
+      </TabPanel>
+    </TabPanels>
+  </Tabs>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import Chart from 'primevue/chart'
+import Tabs from 'primevue/tabs'
+import TabList from 'primevue/tablist'
+import Tab from 'primevue/tab'
+import TabPanels from 'primevue/tabpanels'
+import TabPanel from 'primevue/tabpanel'
+import HVSITPTable from '@/components/HVSITPTable.vue'
+import GVSTable from '@/components/GVSTable.vue'
+import { replaceDate } from '@/utils'
+import type { IHVSITP, IGVS } from '@/types/sheets'
+
 const primeChart = ref()
 const chartOptions = ref()
-let liveUpdate = null as unknown as NodeJS.Timeout
+const chartData = ref([
+  {
+    labels: [] as string[],
+    dataset: [] as number[],
+  },
+  {
+    labels: [] as string[],
+    dataset: [] as number[],
+  },
+])
+const activeTabIdx = ref(0)
+
 onMounted(() => {
   chartOptions.value = setChartOptions()
-  liveUpdate = setInterval(() => {
-    addData(new Date().toLocaleTimeString('ru-RU'), Math.random().toFixed(2))
-    removeData()
-  }, 1000)
 })
-onUnmounted(() => {
-  clearInterval(liveUpdate as NodeJS.Timeout)
-})
-function addData(label: string | number, newData: string) {
-  const chartInstance = primeChart.value.chart
 
-  chartInstance.data.labels.push(label)
-  chartInstance.data.datasets.forEach((dataset: { data: string[] }) => {
-    dataset.data.push(newData)
-  })
-  chartInstance.update()
-}
-
-function removeData() {
-  const chartInstance = primeChart.value.chart
-  chartInstance.data.labels.shift()
-  chartInstance.data.datasets.forEach((dataset: { data: string[] }) => {
-    dataset.data.shift()
-  })
-  chartInstance.update()
-}
 const setChartData = () => {
   const documentStyle = getComputedStyle(document.documentElement)
 
   return {
-    labels: Array.from({ length: 10 }, () => new Date().toLocaleTimeString('ru-RU')),
+    labels: [],
     datasets: [
       {
-        label: 'Давление в системе',
-        data: Array.from({ length: 10 }, () => Math.random().toFixed(2)),
+        label: 'Потребление за период, м3',
+        data: [],
         fill: false,
-        borderColor: documentStyle.getPropertyValue('--p-cyan-500'),
+        borderColor: documentStyle.getPropertyValue('--p-primary-500'),
         tension: 0.4,
       },
     ],
   }
 }
+
+function addChartData() {
+  const chartInstance = primeChart.value.chart
+  chartInstance.data.labels = chartData.value[activeTabIdx.value].labels
+  chartInstance.data.datasets[0].data = chartData.value[activeTabIdx.value].dataset
+  chartInstance.update()
+}
+
+function onTabUpdate(v: string | number) {
+  activeTabIdx.value = Number(v)
+  addChartData()
+}
+
+function replaceChartData(payload: IHVSITP[] | IGVS[]) {
+  if ((payload[0] as IHVSITP).delta) {
+    chartData.value[0].labels = payload.map(
+      (e) => `${replaceDate(new Date(e.datetime))} ${new Date(e.datetime).toLocaleTimeString()}`,
+    )
+    chartData.value[0].dataset = (payload as IHVSITP[]).map((e) => e.delta)
+  } else {
+    chartData.value[1].labels = payload.map(
+      (e) => `${replaceDate(new Date(e.datetime))} ${new Date(e.datetime).toLocaleTimeString()}`,
+    )
+    chartData.value[1].dataset = (payload as IGVS[]).map((e) => e.total)
+  }
+  addChartData()
+}
+
 const setChartOptions = () => {
   const documentStyle = getComputedStyle(document.documentElement)
   const textColor = documentStyle.getPropertyValue('--p-text-color')

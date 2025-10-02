@@ -1,33 +1,19 @@
-export enum Statuses {
-  New = 'New',
-  InProgress = 'InProgress',
-  Resolved = 'Resolved',
+export const deviationWarning: { [key: number]: Record<string, string> } = {
+  1: {
+    title: 'Требуется провести проверку корректности работы узлов учета ХВС и ОДПУ ГВС.',
+    description:
+      'Зафиксировано превышение допустимого отклонения показаний на уровне 5%, что может свидетельствовать о начальных признаках аномалий (неисправность приборов учета, мелкие утечки, некорректная работа системы).',
+  },
+  2: {
+    title:
+      'Требуется незамедлительно инициировать анализ и диагностику системы учета ХВС и ОДПУ ГВС с привлечением сервисной бригады.',
+    description:
+      'Зафиксировано превышение допустимого отклонения показаний на уровне 10%, что считается аномалией и может быть связано с утечкой ГВС, неисправностью узлов учета, внешним воздействием либо бездоговорным потреблением.',
+  },
 }
 
-export enum Priority {
-  Critical = 'Критический',
-  Major = 'Высокий',
-  Moderate = 'Средний',
-  Minor = 'Низкий',
-}
-
-export enum Types {
-  Hardware = 'Отказ оборудования',
-  Quality = 'Нарушение качества',
-  Supply = 'Перерыв подачи',
-  Contamination = 'Загрязнение',
-  Maintance = 'Требуется обслуживание',
-}
-
-export interface ITask {
-  _id: string
-  status: Statuses
-  priority: Priority
-  type: Types
-  adress: string
-  title: string
-  message: string
-  assigned_to: string
-  createdAt: Date
-  UpdatetAt: Date
+export const tempWarning = {
+  title: 'Требуется провести проверку системы теплоснабжения.',
+  description:
+    'Pазница температур T1−T2 вышла за пределы нормы (17–23 °С), что может свидетельствовать о нарушении работы теплообменника или циркуляции теплоносителя.',
 }

@@ -25,3 +25,12 @@ onBeforeMount(async () => {
   }
 })
 </script>
+
+<style>
+.p-tablist-tab-list {
+  justify-content: space-around;
+}
+.p-datatable-header {
+  padding: 0 0 1rem 0 !important;
+}
+</style>

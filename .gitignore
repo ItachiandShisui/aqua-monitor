@@ -30,3 +30,5 @@ coverage
 *.tsbuildinfo
 
 .env
+server/src/temp/*
+server/build

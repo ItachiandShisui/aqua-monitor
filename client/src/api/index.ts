@@ -1,6 +1,6 @@
 import api from '@/lib/axios'
 import type { IUser } from '@/types/user.ts'
-import type { ITask } from '@/types/accidents.ts'
+import type { IGVS, IGVSAnalize, IHVSITP } from '@/types/sheets.ts'
 import { AxiosError } from 'axios'
 
 export interface ILoginResponse {
@@ -39,27 +39,100 @@ export async function registerUser(payload: IUser) {
   }
 }
 
-export async function getTasks() {
+export async function getHVSITPSheet(params = '') {
   try {
-    const response = await api.get('/getTasks')
-    return response.data as ITask[]
-  } catch (error) {
-    console.error(error)
-    return []
-  }
-}
-
-export async function createTask(payload: ITask) {
-  try {
-    await api.post('/createtask', payload)
+    const response = await api.get(`/getHVSITPSheet/${params}`)
+    return response.data as { data: IHVSITP[]; totalSheets: number }
   } catch (error) {
     console.error(error)
   }
 }
 
-export async function updateTask(payload: ITask) {
+export async function updateHVSITPSheet(payload: Set<IHVSITP>) {
   try {
-    await api.patch(`/updateTask/${payload._id}`, payload)
+    return await api.patch('updateHVSITPSheet', Array.from(payload))
+  } catch (error) {
+    console.error(error)
+  }
+}
+
+export async function getGVSSheet(params = '') {
+  try {
+    const response = await api.get(`/getGVSSheet/${params}`)
+    return response.data as { data: IGVS[]; totalSheets: number }
+  } catch (error) {
+    console.error(error)
+  }
+}
+
+export async function updateGVSSheet(payload: Set<IGVS>) {
+  try {
+    return await api.patch('updateGVSSheet', Array.from(payload))
+  } catch (error) {
+    console.error(error)
+  }
+}
+
+export async function createGVSForecastSheet(payload: number) {
+  try {
+    const response = await api.post('/createGVSAnalyze', { duration: payload })
+    return response.data as { data: IGVSAnalize[]; totalSheets: number }
+  } catch (error) {
+    console.error(error)
+  }
+}
+
+export async function getGVSForecastSheet(params = '') {
+  try {
+    const response = await api.get(`/getGVSAnalyze/${params}`)
+    return response.data as { data: IGVSAnalize[]; totalSheets: number }
+  } catch (error) {
+    console.error(error)
+  }
+}
+
+export async function updateGVSForecastSheet(payload: Set<IGVS>) {
+  try {
+    return await api.patch('/updateGVSForecastSheet', Array.from(payload))
+  } catch (error) {
+    console.error(error)
+  }
+}
+
+export async function getGVSPDF(params = '') {
+  try {
+    return await api.get(`/exportGVSCollection/${params}`, {
+      responseType: 'blob',
+    })
+  } catch (error) {
+    console.error(error)
+  }
+}
+
+export async function getGVSForecastPDF(params = '') {
+  try {
+    return await api.get(`/exportGVSForecastCollection/${params}`, {
+      responseType: 'blob',
+    })
+  } catch (error) {
+    console.error(error)
+  }
+}
+
+export async function getHVSITPPDF(params = '') {
+  try {
+    return await api.get(`/exportHVSITPCollection/${params}`, {
+      responseType: 'blob',
+    })
+  } catch (error) {
+    console.error(error)
+  }
+}
+
+export async function getIncidents() {
+  try {
+    const response = await api.get('/getIncidents/')
+    return response.data as IGVSAnalize[]
   } catch (error) {
     console.error(error)
   }
