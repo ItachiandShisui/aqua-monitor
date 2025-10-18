@@ -7,19 +7,19 @@ export interface IHVSITP {
   datetime: Date
 }
 
-export interface IGVS {
+export interface IHVSITPForecast {
   _id: string
   date: string
   time: string
-  to: number
-  out: number
   total: number
-  t1: number
-  t2: number
+  delta: number
   datetime: Date
+  maintenance: number
+  forecast: number
+  delta_pred: number
 }
 
-export interface IGVSAnalize {
+export interface IGVS {
   _id: string
   date: string
   time: string

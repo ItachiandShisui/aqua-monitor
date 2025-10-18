@@ -24,15 +24,29 @@ const GVSSchema = new mongoose.Schema<IGVS>({
   },
   t1: {
     type: Number,
-    required: true,
   },
   t2: {
     type: Number,
-    required: true,
   },
   datetime: {
     type: Date,
     required: true,
+  },
+  diff: {
+    type: Number,
+  },
+  temp_warning: {
+    type: Number,
+    required: true,
+  },
+  delta: {
+    type: Number,
+  },
+  deviation: {
+    type: Number,
+  },
+  deviation_warning: {
+    type: Number,
   },
 });
 

@@ -30,7 +30,7 @@ n_steps_ = int(period) # параметр числа часов предсказ
 # Если нужно, преобразуем datetime в тип datetime64
 df_gvs["datetime"] = pd.to_datetime(df_gvs["datetime"])
 df_hvs["datetime"] = pd.to_datetime(df_hvs["datetime"])
-
+df_hvs = df_hvs.sort_values(by="datetime")
 # In[3]:
 
 
@@ -158,7 +158,7 @@ forecast_df = forecast_df.rename(columns={"delta_pred": "delta"})
 forecast_df["date"] = forecast_df["datetime"].dt.strftime("%Y-%m-%d")
 
 # 4. total = cumsum(delta).shift(fill_value=0)
-forecast_df["total"] = (df_hvs["total"].iloc[-1] + forecast_df["delta"].cumsum().shift(fill_value=0)).round(2)
+# forecast_df["total"] = (df_hvs["total"].iloc[-1] + forecast_df["delta"].cumsum().shift(fill_value=0)).round(2)
 # Предупреждение: Требуется направить сервисную бригаду для выполнения ТО насоса во избежание риска аварийного отказа оборудования. 
 # Причина: работа насоса ХВС более 70 тыс. часов.
 forecast_df["maintenance"] = 1
@@ -174,7 +174,9 @@ forecast_df["forecast"] = 1
 
 df_hvs = pd.concat([df_hvs, forecast_df], ignore_index=True)
 df_hvs['delta'] = (df_hvs['delta']).round(2)
-
+df_hvs['total'] = df_hvs["total"].iloc[0] + df_hvs["delta"].cumsum().shift(fill_value=0)
+df_hvs.drop('_id', axis=1, inplace=True)
+df_hvs = df_hvs[df_hvs["forecast"] == 1]
 # In[6]:
 
 # Выгрузка в JSON-файлы

@@ -3,7 +3,7 @@
     <div class="h-18 p-4 border-b border-carbon-gray-80">
       <div class="flex items-center space-x-3">
         <div class="flex items-center justify-center">
-          <Button icon="pi pi-home" rounded severity="info" />
+          <Button icon="pi pi-home" rounded />
         </div>
         <div>
           <h1 class="text-lg font-semibold text-carbon-gray-10">ЦДУ</h1>

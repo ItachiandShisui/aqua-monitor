@@ -45,6 +45,12 @@
       </div>
     </template>
     <Column v-for="col of columns" :key="col.field" :field="col.field" :header="col.header">
+      <template v-if="col.field === 'delta'" #header>
+        <i
+          class="pi pi-info-circle text-[var(--p-primary-color)]"
+          v-tooltip.top="'Столбец имеет возможность редактирования'"
+        ></i>
+      </template>
       <template #body="{ data, field }">
         <template v-if="field === 'date'">{{ replaceDate(data[field]) }}</template>
         <template v-else>{{ data[field as keyof typeof data] }}</template>
@@ -167,6 +173,12 @@ onMounted(async () => {
 function onCellEdit(e: ICellEditEvent) {
   const { data, newValue, field, index } = e
 
+  if (field === 'delta' && toEditList.value.size) {
+    resetSheet()
+    const idx = sheets.value.findIndex((e) => e._id === (data._id as string))
+    sheets.value[idx].delta = newValue as number
+  }
+
   if (field === 'delta' && newValue) {
     data[field] = newValue
     toEditList.value.add(sheets.value[index])
@@ -200,14 +212,24 @@ async function fetchData(e?: PageState) {
 async function updateSheet() {
   try {
     showConfirmModal.value = false
-    await updateHVSITPForecastSheet(toEditList.value).then((response) => {
-      if (response?.status !== 200) {
-        throw new Error()
-      }
-      toast.add({ severity: 'success', summary: response.data.message, life: 3000 })
-      fetchData()
-      toEditList.value.clear()
+    isLoading.value = true
+    toast.add({
+      severity: 'info',
+      summary: 'Пересчет модели прогнозирования для посуточной ведомости водосчетчика ХВС ИТП.',
+      life: 5000,
     })
+    await updateHVSITPForecastSheet(toEditList.value)
+      .then((response) => {
+        if (response?.status !== 200) {
+          throw new Error()
+        }
+        toast.add({ severity: 'success', summary: response.data.message, life: 3000 })
+        fetchData()
+        toEditList.value.clear()
+      })
+      .finally(() => {
+        isLoading.value = false
+      })
   } catch (error) {
     toast.add({
       severity: 'error',
@@ -240,6 +262,11 @@ function resetSheet() {
 }
 
 async function createForecast() {
+  toast.add({
+    severity: 'info',
+    summary: 'Построение нового прогноза посуточной ведомости водосчетчика ХВС ИТП.',
+    life: 5000,
+  })
   showForecastModal.value = false
   isLoading.value = true
   await createHVSITPForecastSheet(forecastDuration.value * 24).then((data) => {

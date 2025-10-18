@@ -45,6 +45,12 @@
       </div>
     </template>
     <Column v-for="col of columns" :key="col.field" :field="col.field" :header="col.header">
+      <template v-if="col.field === 'total'" #header>
+        <i
+          class="pi pi-info-circle text-[var(--p-primary-color)]"
+          v-tooltip.top="'Столбец имеет возможность редактирования'"
+        ></i>
+      </template>
       <template #body="{ data, field }">
         <template v-if="field === 'date'">{{ replaceDate(data[field]) }}</template>
         <template v-else>{{ data[field as keyof typeof data] }}</template>
@@ -121,7 +127,7 @@ import {
 } from '@/api'
 import { replaceDate } from '@/utils'
 import type { PageState } from 'primevue'
-import type { IGVSAnalize } from '@/types/sheets'
+import type { IGVS } from '@/types/sheets'
 
 interface ICellEditEvent {
   data: Record<string, string | number>
@@ -140,15 +146,17 @@ const columns = ref([
   { field: 'to', header: 'Подача, м3' },
   { field: 'out', header: 'Обратка, м3' },
   { field: 'total', header: 'Потребление за период, м3' },
+  { field: 't1', header: 'Т1 гвс, оС' },
+  { field: 't2', header: 'Т2 гвс, оС' },
 ])
 const toast = useToast()
-let originalSheets = [] as IGVSAnalize[]
-const sheets = ref<IGVSAnalize[]>([])
+let originalSheets = [] as IGVS[]
+const sheets = ref<IGVS[]>([])
 const totalSheets = ref(0)
 const isLoading = ref(false)
 const showForecastModal = ref(false)
 const showConfirmModal = ref(false)
-const toEditList = ref(new Set<IGVSAnalize>())
+const toEditList = ref(new Set<IGVS>())
 const forecastDuration = ref(7)
 const saveOptions = [
   {
@@ -167,6 +175,12 @@ onMounted(async () => {
 
 function onCellEdit(e: ICellEditEvent) {
   const { data, newValue, field, index } = e
+
+  if (field === 'total' && toEditList.value.size) {
+    resetSheet()
+    const idx = sheets.value.findIndex((e) => e._id === (data._id as string))
+    sheets.value[idx].total = newValue as number
+  }
 
   if (field === 'total' && newValue) {
     data[field] = newValue
@@ -216,14 +230,24 @@ async function fetchData(e?: PageState) {
 async function updateSheet() {
   try {
     showConfirmModal.value = false
-    await updateGVSForecastSheet(toEditList.value).then((response) => {
-      if (response?.status !== 200) {
-        throw new Error()
-      }
-      toast.add({ severity: 'success', summary: response.data.message, life: 3000 })
-      fetchData()
-      toEditList.value.clear()
+    isLoading.value = true
+    toast.add({
+      severity: 'info',
+      summary: 'Пересчет модели прогнозирования для посуточной ведомости ОДПУ ГВС.',
+      life: 5000,
     })
+    await updateGVSForecastSheet(toEditList.value)
+      .then((response) => {
+        if (response?.status !== 200) {
+          throw new Error()
+        }
+        toast.add({ severity: 'success', summary: response.data.message, life: 3000 })
+        fetchData()
+        toEditList.value.clear()
+      })
+      .finally(() => {
+        isLoading.value = false
+      })
   } catch (error) {
     toast.add({
       severity: 'error',
@@ -241,6 +265,11 @@ function resetSheet() {
 }
 
 async function createForecast() {
+  toast.add({
+    severity: 'info',
+    summary: 'Построение нового прогноза посуточной ведомости ОДПУ ГВС.',
+    life: 5000,
+  })
   showForecastModal.value = false
   isLoading.value = true
   await createGVSForecastSheet(forecastDuration.value * 24).then((data) => {

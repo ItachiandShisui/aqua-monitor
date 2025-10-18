@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+import random
 import pandas as pd
 import numpy as np
 import sys
@@ -31,7 +32,11 @@ def extend_gvs(df_gvs: pd.DataFrame, n_steps_: int) -> pd.DataFrame:
     last_dt = df_gvs["datetime"].max()
 
     # шаги (часовые)
-    new_datetimes = pd.date_range(start=last_dt + pd.Timedelta(hours=1), periods=n_steps_, freq="h")
+    new_datetimes = pd.date_range(
+        start=last_dt + pd.Timedelta(hours=1),
+        periods=n_steps_,
+        freq="h"
+    )
 
     new_rows = []
     for dt in new_datetimes:
@@ -45,7 +50,6 @@ def extend_gvs(df_gvs: pd.DataFrame, n_steps_: int) -> pd.DataFrame:
 
         # ищем строку с этим datetime
         prev_row = df_gvs.loc[df_gvs["datetime"] == lookup_dt]
-
         if not prev_row.empty:
             to_val = prev_row["to"].values[0] * (1 + np.random.uniform(-0.03, 0.03))
             total_val = prev_row["total"].values[0] * (1 + np.random.uniform(-0.03, 0.03))
@@ -60,16 +64,15 @@ def extend_gvs(df_gvs: pd.DataFrame, n_steps_: int) -> pd.DataFrame:
             "to": to_val,
             "out": out_val,
             "total": total_val,
-            "t1": np.nan,
-            "t2": np.nan,
+            "t1": round(47 * (1 + random.uniform(-0.02, 0.02))),
+            "t2": round(25 * (1 + random.uniform(-0.05, 0.05))),
             "datetime": dt
         })
 
-    # объединяем
-    df_new = pd.DataFrame(new_rows)
-    df_extended = pd.concat([df_gvs, df_new], ignore_index=True)
+    # создаём новый DataFrame только с прогнозом
+    df_forecast = pd.DataFrame(new_rows)
 
-    return df_extended
+    return df_forecast
 
 # Перезаписываем её и дальше как с обычными данными
 df_gvs_extended = extend_gvs(df_gvs, n_steps_= n_steps_)

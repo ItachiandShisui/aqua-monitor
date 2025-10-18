@@ -5,14 +5,14 @@
       type="line"
       :data="setTempChart()"
       :options="tempChartOptions"
-      class="w-full h-36 mb-4 basis-50 flex-50"
+      class="w-full h-40 mb-4 basis-50 flex-50"
     />
     <Chart
       ref="amountChart"
       type="line"
       :data="setAmountChart()"
       :options="amountChartOptions"
-      class="w-full h-36 mb-4 basis-50 flex-50"
+      class="w-full h-40 mb-4 basis-50 flex-50"
     />
   </div>
   <div class="flex gap-2 w-full sticky back z-100 top-[-16px] bg-[var(--carbon-gray-100)]">
@@ -21,7 +21,7 @@
       type="line"
       :data="setTotalChart()"
       :options="chartOptions"
-      class="w-full h-36 mb-4"
+      class="w-full h-40 mb-4"
     />
   </div>
   <Tabs class="w-full" value="0" @update:value="onTabUpdate">
@@ -54,7 +54,7 @@ import TabPanels from 'primevue/tabpanels'
 import TabPanel from 'primevue/tabpanel'
 import HVSITPTable from '@/components/HVSITPTable.vue'
 import GVSTable from '@/components/GVSTable.vue'
-import { replaceDate } from '@/utils'
+import { replaceDate, replaceDateTime } from '@/utils'
 import type { IHVSITP, IGVS } from '@/types/sheets'
 
 const primeChart = ref()
@@ -86,7 +86,7 @@ const activeTabIdx = ref(0)
 
 onMounted(() => {
   chartOptions.value = setChartOptions(0.5)
-  amountChartOptions.value = JSON.parse(JSON.stringify(setChartOptions(12344, 12450)))
+  amountChartOptions.value = JSON.parse(JSON.stringify(setChartOptions(0, 1)))
   tempChartOptions.value = setChartOptions(100)
 })
 
@@ -161,9 +161,9 @@ function onTabUpdate(v: string | number) {
 }
 
 function replaceChartData(payload: IHVSITP[] | IGVS[]) {
-  if ((payload[0] as IHVSITP).delta) {
+  if (!(payload[0] as IGVS).t1) {
     chartData.value[0].labels = payload.map(
-      (e) => `${replaceDate(new Date(e.datetime))} ${new Date(e.datetime).toLocaleTimeString()}`,
+      (e) => `${replaceDate(new Date(e.datetime), true)} ${replaceDateTime(e.datetime)}`,
     )
     chartData.value[0].dataset = (payload as IHVSITP[]).map((e) => e.delta)
 
@@ -173,10 +173,16 @@ function replaceChartData(payload: IHVSITP[] | IGVS[]) {
     const amountInstance = amountChart.value.chart
     amountInstance.data.labels = amountChartData.value.labels
     amountInstance.data.datasets[0].data = amountChartData.value.dataset
+    const minAmountChartAxe = Math.floor(amountChartData.value.dataset[0])
+    const maxAmountChartAxe = Math.ceil(
+      amountChartData.value.dataset[amountChartData.value.dataset.length - 1],
+    )
+    amountInstance.options.scales.y.min = minAmountChartAxe
+    amountInstance.options.scales.y.max = maxAmountChartAxe
     amountInstance.update()
   } else {
     chartData.value[1].labels = payload.map(
-      (e) => `${replaceDate(new Date(e.datetime))} ${new Date(e.datetime).toLocaleTimeString()}`,
+      (e) => `${replaceDate(new Date(e.datetime), true)} ${replaceDateTime(e.datetime)}`,
     )
     chartData.value[1].dataset = (payload as IGVS[]).map((e) => e.total)
 
@@ -188,6 +194,14 @@ function replaceChartData(payload: IHVSITP[] | IGVS[]) {
     tempInstance.data.labels = tempChartData.value.labels
     tempInstance.data.datasets[0].data = tempChartData.value.dataset1
     tempInstance.data.datasets[1].data = tempChartData.value.dataset2
+    const minTempChartAxe = Math.min(
+      ...[...tempChartData.value.dataset1, ...tempChartData.value.dataset2],
+    )
+    const maxTempChartAxe = Math.max(
+      ...[...tempChartData.value.dataset1, ...tempChartData.value.dataset2],
+    )
+    tempInstance.options.scales.y.min = minTempChartAxe - 5
+    tempInstance.options.scales.y.max = maxTempChartAxe + 5
     tempInstance.update()
   }
   addChartData()
@@ -213,6 +227,9 @@ const setChartOptions = (axesize: number, minAxe = 0) => {
       x: {
         ticks: {
           color: textColorSecondary,
+          font: {
+            size: 10,
+          },
         },
         grid: {
           color: surfaceBorder,

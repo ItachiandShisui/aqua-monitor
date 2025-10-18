@@ -9,9 +9,12 @@ import authRoutes from "./routes/authRoutes";
 import sheetsRoutes from "./routes/sheetsRoutes";
 import forecastRoutes from "./routes/forecastRoutes";
 import { connectDB } from "./config/db";
+import bodyParser from "body-parser";
 
 dotenv.config();
 const app: Application = express();
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
 
 connectDB();
 

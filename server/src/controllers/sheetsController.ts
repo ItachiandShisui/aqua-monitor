@@ -7,6 +7,9 @@ import GVS from "../models/GVS";
 import type { IHVSITP, IGVS } from "../types/sheets";
 import { eraseFile } from "../utils";
 
+const filePath =
+  process.env.NODE_ENV === "production" ? ["..", "..", "temp"] : ["..", "temp"];
+
 export async function getHVSITPSheet(
   req: Request,
   res: Response,
@@ -44,7 +47,7 @@ export async function createHVSITPSheet(req: Request, res: Response) {
         },
       },
     });
-    eraseFile(path.join(__dirname, "..", "temp", "HVSITPoutput.pdf"));
+    eraseFile(path.join(__dirname, ...filePath, "HVSITPoutput.pdf"));
 
     return res.status(201).json({ message: "Данные добавлены" });
   } catch (error) {
@@ -58,7 +61,7 @@ export async function updateHVSITPSheet(req: Request, res: Response) {
     req.body.forEach(async ({ _id, delta }: IHVSITP) => {
       await HVSITP.updateOne({ _id: _id }, { $set: { delta: delta } });
     });
-    eraseFile(path.join(__dirname, "..", "temp", "HVSITPoutput.pdf"));
+    eraseFile(path.join(__dirname, ...filePath, "HVSITPoutput.pdf"));
 
     return res.status(200).json({ message: "Данные сохранены" });
   } catch (error) {
@@ -104,7 +107,7 @@ export async function createGVSSheet(req: Request, res: Response) {
         },
       },
     });
-    eraseFile(path.join(__dirname, "..", "temp", "GVSoutput.pdf"));
+    eraseFile(path.join(__dirname, ...filePath, "GVSoutput.pdf"));
 
     return res.status(201).json({ message: "Данные добавлены" });
   } catch (error) {
@@ -118,7 +121,7 @@ export async function updateGVSSheet(req: Request, res: Response) {
     req.body.forEach(async ({ _id, total }: IGVS) => {
       await GVS.updateOne({ _id: _id }, { $set: { total: total } });
     });
-    eraseFile(path.join(__dirname, "..", "temp", "GVSoutput.pdf"));
+    eraseFile(path.join(__dirname, ...filePath, "GVSoutput.pdf"));
 
     return res.status(200).json({ message: "Данные сохранены" });
   } catch (error) {
@@ -128,7 +131,7 @@ export async function updateGVSSheet(req: Request, res: Response) {
 }
 
 export async function exportGVSCollection(req: Request, res: Response) {
-  const filePath = path.join(__dirname, "..", "temp", "GVSoutput.pdf");
+  const fullPath = path.join(__dirname, ...filePath, "GVSoutput.pdf");
 
   const myDoc = new PDFDocument({ bufferPages: true });
   myDoc.registerFont("Tinos", "./src/fonts/Tinos.ttf");
@@ -153,7 +156,7 @@ export async function exportGVSCollection(req: Request, res: Response) {
     .skip((pageNumber - 1) * perPage)
     .limit(perPage);
 
-  myDoc.pipe(fs.createWriteStream(filePath));
+  myDoc.pipe(fs.createWriteStream(fullPath));
   myDoc
     .font("Tinos")
     .fontSize(24)
@@ -187,7 +190,7 @@ export async function exportGVSCollection(req: Request, res: Response) {
 }
 
 export async function exportHVSITPCollection(req: Request, res: Response) {
-  const filePath = path.join(__dirname, "..", "temp", "HVSITPoutput.pdf");
+  const fullPath = path.join(__dirname, ...filePath, "HVSITPoutput.pdf");
 
   const myDoc = new PDFDocument({ bufferPages: true });
   myDoc.registerFont("Tinos", "./src/fonts/Tinos.ttf");
@@ -212,7 +215,7 @@ export async function exportHVSITPCollection(req: Request, res: Response) {
     .skip((pageNumber - 1) * perPage)
     .limit(perPage);
 
-  myDoc.pipe(fs.createWriteStream(filePath));
+  myDoc.pipe(fs.createWriteStream(fullPath));
   myDoc
     .font("Tinos")
     .fontSize(24)

@@ -7,6 +7,7 @@ import './index.css'
 
 import App from './App.vue'
 import router from './router'
+import Tooltip from 'primevue/tooltip'
 
 const app = createApp(App)
 
@@ -17,19 +18,12 @@ app
     theme: {
       preset: Aura,
       options: {
-        preset: Aura,
-        options: {
-          cssLayer: {
-            name: 'primevue',
-            order: 'theme, base, primevue',
-          },
-        },
-        // prefix: 'p',
-        darkModeSelector: 'system',
-        // cssLayer: false,
+        darkModeSelector: '.darkTheme',
       },
     },
   })
   .use(ToastService)
+
+app.directive('tooltip', Tooltip)
 
 app.mount('#app')

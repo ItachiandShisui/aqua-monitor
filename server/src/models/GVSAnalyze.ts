@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
-import type { IGVSAnalize } from "../types/sheets";
+import type { IGVS } from "../types/sheets";
 
-const GVSForecastSchema = new mongoose.Schema<IGVSAnalize>({
+const GVSForecastSchema = new mongoose.Schema<IGVS>({
   date: {
     type: String,
     required: true,

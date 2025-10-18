@@ -1,6 +1,6 @@
 import api from '@/lib/axios'
 import type { IUser } from '@/types/user.ts'
-import type { IGVS, IGVSAnalize, IHVSITP } from '@/types/sheets.ts'
+import type { IGVS, IHVSITP, IHVSITPForecast } from '@/types/sheets.ts'
 import { AxiosError } from 'axios'
 
 export interface ILoginResponse {
@@ -85,7 +85,7 @@ export async function updateGVSSheet(payload: Set<IGVS>) {
 export async function createGVSForecastSheet(payload: number) {
   try {
     const response = await api.post('/createGVSAnalyze', { duration: payload })
-    return response.data as { data: IGVSAnalize[]; totalSheets: number }
+    return response.data as { data: IGVS[]; totalSheets: number }
   } catch (error) {
     console.error(error)
   }
@@ -103,7 +103,7 @@ export async function createHVSITPForecastSheet(payload: number) {
 export async function getGVSForecastSheet(params = '') {
   try {
     const response = await api.get(`/getGVSAnalyze/${params}`)
-    return response.data as { data: IGVSAnalize[]; totalSheets: number }
+    return response.data as { data: IGVS[]; totalSheets: number }
   } catch (error) {
     console.error(error)
   }
@@ -167,7 +167,7 @@ export async function getHVSITPForecastPDF(params = '') {
 export async function getIncidents() {
   try {
     const response = await api.get('/getIncidents/')
-    return response.data as IGVSAnalize[]
+    return response.data as { gvs: IGVS[]; hvsitp: IHVSITPForecast[]; historical: IGVS[] }
   } catch (error) {
     console.error(error)
   }

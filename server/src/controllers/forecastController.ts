@@ -8,24 +8,14 @@ import GVS from "../models/GVS";
 import GVSAnalyze from "../models/GVSAnalyze";
 import HVSITPForecast from "../models/HTSITPForecast";
 import { eraseFile } from "../utils";
-import { IGVSAnalize, IHVSITPForecast } from "../types/sheets";
+
+const filePath =
+  process.env.NODE_ENV === "production" ? ["..", "..", "temp"] : ["..", "temp"];
 
 async function saveGVSAnalyze(req: Request, res: Response, payload: string) {
   try {
     await GVSAnalyze.deleteMany({});
-    await GVSAnalyze.create(JSON.parse(payload), {
-      validator: {
-        $jsonSchema: {
-          bsonType: "object",
-          required: ["date"],
-          properties: {
-            myField: {
-              bsonType: "string",
-            },
-          },
-        },
-      },
-    });
+    await GVSAnalyze.create(JSON.parse(payload));
     getGVSAnalyze(req, res);
   } catch (error) {
     console.error(error);
@@ -37,7 +27,7 @@ export async function createGVSAnalyze(req: Request, res: Response) {
   try {
     const GVSCollection = JSON.stringify(await GVS.find());
     const HVSITPCollection = JSON.stringify(await HVSITP.find());
-    const forecastDuration = req.body.duration.toString() || "168";
+    const forecastDuration = req.body?.duration.toString() || "168";
     let pythonOutput = "";
 
     const pythonProcess = spawn("python", ["./src/scripts/gvs_analyzer.py"]);
@@ -104,11 +94,11 @@ export async function getGVSAnalyze(req: Request, res: Response) {
     }
     const pageNumber = Number(req.query.pageNumber) || 1;
     const perPage = Number(req.query.perPage) || 25;
-    const sheet = await GVSAnalyze.find({ t1: null })
+    const sheet = await GVSAnalyze.find()
       .sort({ datetime: 1 })
       .skip((pageNumber - 1) * perPage)
       .limit(perPage);
-    totalCount = await GVSAnalyze.find({ t1: null }).countDocuments();
+    totalCount = await GVSAnalyze.find().countDocuments();
 
     return res.status(200).json({ totalSheets: totalCount, data: sheet });
   } catch (error) {
@@ -119,12 +109,54 @@ export async function getGVSAnalyze(req: Request, res: Response) {
 
 export async function updateHVSITPForecastSheet(req: Request, res: Response) {
   try {
-    req.body.forEach(async ({ _id, delta }: IHVSITPForecast) => {
-      await HVSITPForecast.updateOne({ _id: _id }, { $set: { delta: delta } });
-    });
-    eraseFile(path.join(__dirname, "..", "temp", "GVSForecastOutput.pdf"));
+    const editedRow = req.body[0];
+    await HVSITPForecast.updateOne(
+      { _id: editedRow._id },
+      { $set: { delta: editedRow.delta } }
+    );
 
-    return res.status(200).json({ message: "Данные сохранены" });
+    eraseFile(path.join(__dirname, ...filePath, "GVSForecastOutput.pdf"));
+
+    let rowsErased = "";
+    await HVSITPForecast.deleteMany({
+      datetime: { $gt: editedRow.datetime },
+    }).then((result) => {
+      rowsErased = result.deletedCount.toString();
+    });
+
+    if (rowsErased && rowsErased !== "0") {
+      const GVSCollection = JSON.stringify(await GVS.find());
+      const HVSITPCollection = JSON.stringify(await HVSITP.find());
+      const HVSITPForecastCollection = JSON.stringify(
+        await HVSITPForecast.find()
+      );
+
+      const finalHVSITPString =
+        HVSITPCollection.slice(0, -1) + "," + HVSITPForecastCollection.slice(1);
+      let pythonOutput = "";
+
+      const pythonProcess = spawn("python", ["./src/scripts/hvs_forecast.py"]);
+
+      pythonProcess.stdin.write(GVSCollection + "\n");
+      pythonProcess.stdin.write(finalHVSITPString + "\n");
+      pythonProcess.stdin.write(rowsErased);
+      pythonProcess.stdin.end();
+
+      pythonProcess.stdout.on("data", (data: { toString: () => string }) => {
+        pythonOutput += data.toString();
+      });
+
+      pythonProcess.on("close", async (code: number) => {
+        if (code === 0) {
+          await HVSITPForecast.create(JSON.parse(pythonOutput));
+          return res
+            .status(200)
+            .json({ message: "Данные сохранены и прогноз был обновлен" });
+        } else {
+          res.status(500).send("Python script execution failed.");
+        }
+      });
+    }
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server Error" });
@@ -133,12 +165,57 @@ export async function updateHVSITPForecastSheet(req: Request, res: Response) {
 
 export async function updateGVSForecastSheet(req: Request, res: Response) {
   try {
-    req.body.forEach(async ({ _id, total }: IGVSAnalize) => {
-      await GVSAnalyze.updateOne({ _id: _id }, { $set: { total: total } });
-    });
-    eraseFile(path.join(__dirname, "..", "temp", "GVSForecastOutput.pdf"));
+    const editedRow = req.body[0];
+    await GVSAnalyze.updateOne(
+      { _id: editedRow._id },
+      { $set: { total: editedRow.total } }
+    );
 
-    return res.status(200).json({ message: "Данные сохранены" });
+    eraseFile(path.join(__dirname, ...filePath, "GVSForecastOutput.pdf"));
+    let rowsErased = "";
+    await GVSAnalyze.deleteMany({
+      datetime: { $gt: editedRow.datetime },
+    }).then((result) => {
+      rowsErased = result.deletedCount.toString();
+    });
+
+    if (rowsErased && rowsErased !== "0") {
+      const GVSCollection = JSON.stringify(await GVS.find());
+      const HVSITPCollection = JSON.stringify(await HVSITP.find());
+      const HVSITPForecastCollection = JSON.stringify(
+        await HVSITPForecast.find()
+      );
+
+      const finalHVSITPString =
+        HVSITPCollection.slice(0, -1) + "," + HVSITPForecastCollection.slice(1);
+      const GVSAnalyzeCollection = JSON.stringify(await GVSAnalyze.find());
+
+      const finalGVSString =
+        GVSCollection.slice(0, -1) + "," + GVSAnalyzeCollection.slice(1);
+      let pythonOutput = "";
+
+      const pythonProcess = spawn("python", ["./src/scripts/gvs_analyzer.py"]);
+
+      pythonProcess.stdin.write(finalGVSString + "\n");
+      pythonProcess.stdin.write(finalHVSITPString + "\n");
+      pythonProcess.stdin.write(rowsErased);
+      pythonProcess.stdin.end();
+
+      pythonProcess.stdout.on("data", (data: { toString: () => string }) => {
+        pythonOutput += data.toString();
+      });
+
+      pythonProcess.on("close", async (code: number) => {
+        if (code === 0) {
+          await GVSAnalyze.create(JSON.parse(pythonOutput));
+          return res
+            .status(200)
+            .json({ message: "Данные сохранены и прогноз был обновлен" });
+        } else {
+          res.status(500).send("Python script execution failed.");
+        }
+      });
+    }
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server Error" });
@@ -152,19 +229,7 @@ async function saveHVSITPForecast(
 ) {
   try {
     await HVSITPForecast.deleteMany({});
-    await HVSITPForecast.create(JSON.parse(payload), {
-      validator: {
-        $jsonSchema: {
-          bsonType: "object",
-          required: ["date"],
-          properties: {
-            myField: {
-              bsonType: "string",
-            },
-          },
-        },
-      },
-    });
+    await HVSITPForecast.create(JSON.parse(payload));
     getHVSITPForecast(req, res);
   } catch (error) {
     console.error(error);
@@ -210,8 +275,8 @@ export async function getHVSITPForecast(req: Request, res: Response) {
       await createHVSITPForecast(req, res);
       return;
     }
-    const pageNumber = Number(req.query.pageNumber) || 1;
-    const perPage = Number(req.query.perPage) || 25;
+    const pageNumber = Number(req.query?.pageNumber) || 1;
+    const perPage = Number(req.query?.perPage) || 25;
     const sheet = await HVSITPForecast.find({ forecast: 1 })
       .sort({ datetime: 1 })
       .skip((pageNumber - 1) * perPage)
@@ -229,10 +294,9 @@ export async function exportHVSITPForecastCollection(
   req: Request,
   res: Response
 ) {
-  const filePath = path.join(
+  const fullPath = path.join(
     __dirname,
-    "..",
-    "temp",
+    ...filePath,
     "HVSITPForecastOutput.pdf"
   );
 
@@ -259,7 +323,7 @@ export async function exportHVSITPForecastCollection(
     .skip((pageNumber - 1) * perPage)
     .limit(perPage);
 
-  myDoc.pipe(fs.createWriteStream(filePath));
+  myDoc.pipe(fs.createWriteStream(fullPath));
   myDoc
     .font("Tinos")
     .fontSize(24)
@@ -292,7 +356,7 @@ export async function exportHVSITPForecastCollection(
 }
 
 export async function exportGVSForecastCollection(req: Request, res: Response) {
-  const filePath = path.join(__dirname, "..", "temp", "GVSForecastOutput.pdf");
+  const fullPath = path.join(__dirname, ...filePath, "GVSForecastOutput.pdf");
 
   const myDoc = new PDFDocument({ bufferPages: true });
   myDoc.registerFont("Tinos", "./src/fonts/Tinos.ttf");
@@ -317,7 +381,7 @@ export async function exportGVSForecastCollection(req: Request, res: Response) {
     .skip((pageNumber - 1) * perPage)
     .limit(perPage);
 
-  myDoc.pipe(fs.createWriteStream(filePath));
+  myDoc.pipe(fs.createWriteStream(fullPath));
   myDoc
     .font("Tinos")
     .fontSize(24)
@@ -352,9 +416,13 @@ export async function exportGVSForecastCollection(req: Request, res: Response) {
 
 export async function getIncidents(req: Request, res: Response) {
   try {
-    const sheet = await GVSAnalyze.find({}).sort({ datetime: -1 });
+    const historical = await GVS.find().sort({ datetime: -1 });
+    const gvs = await GVSAnalyze.find().sort({ datetime: -1 });
+    const hvsitp = await HVSITPForecast.find().sort({ datetime: -1 });
 
-    return res.status(200).json(sheet);
+    return res
+      .status(200)
+      .json({ gvs: gvs, hvsitp: hvsitp, historical: historical });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server Error" });
